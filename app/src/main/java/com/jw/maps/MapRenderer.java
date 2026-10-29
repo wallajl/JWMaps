@@ -41,16 +41,20 @@ final class MapRenderer {
         Shape(MapPack.Feature feature) {f=feature; for(double[][] points:f.paths) {double[][] p=new double[points.length][]; for(int i=0;i<p.length;i++) p[i]=MapPack.project(points[i][0],points[i][1]); paths.add(p);} }
     }
     synchronized void setPack(MapPack p) {
-        if(pack==p) return; pack=p; shapes.clear(); if(p==null) return;
+        if(pack==p) return; boolean first=pack==null; pack=p; shapes.clear(); if(p==null) return;
         for(MapPack.Feature f:p.features) shapes.add(new Shape(f));
-        shapes.sort(Comparator.comparingInt(s->layer(s.f.kind))); preview();
+        shapes.sort(Comparator.comparingInt(s->layer(s.f.kind)));
+        if(first){preview();following=true;}
+        setLocation(location);
     }
     private static int layer(String k) {switch(k) {case "park":return 0;case "water":return 1;case "building":return 2;case "road":return 3;default:return 4;}}
     synchronized MapPack pack() {return pack;}
     synchronized void preview() {if(pack!=null) center((pack.bbox[0]+pack.bbox[2])/2,(pack.bbox[1]+pack.bbox[3])/2);following=false;scale=.13;fitRequested=true;}
-    synchronized void center(double lon,double lat) {double[] p=MapPack.project(lon,lat);cx=p[0];cy=p[1];}
-    synchronized void recenter() {if(location!=null&&pack!=null&&pack.covers(location.getLongitude(),location.getLatitude())) {center(location.getLongitude(),location.getLatitude());following=true;fitRequested=false;} else {preview();following=true;}}
-    synchronized void setLocation(Location l) {location=l==null?null:new Location(l);if(following&&location!=null&&pack!=null&&pack.covers(location.getLongitude(),location.getLatitude())) center(location.getLongitude(),location.getLatitude());}
+    private void moveCenter(double lon,double lat) {double[] p=MapPack.project(lon,lat);cx=p[0];cy=p[1];}
+    synchronized void center(double lon,double lat) {moveCenter(lon,lat);following=false;fitRequested=false;}
+    synchronized void recenter() {if(location!=null&&pack!=null&&pack.covers(location.getLongitude(),location.getLatitude())) {moveCenter(location.getLongitude(),location.getLatitude());following=true;fitRequested=false;} else {preview();following=true;}}
+    synchronized boolean isFollowing() {return following;}
+    synchronized void setLocation(Location l) {location=l==null?null:new Location(l);if(following&&location!=null&&pack!=null&&pack.covers(location.getLongitude(),location.getLatitude())) {moveCenter(location.getLongitude(),location.getLatitude());fitRequested=false;}}
     synchronized void pan(float dx,float dy) {cx-=dx/scale;cy+=dy/scale;following=false;}
     synchronized void zoom(double factor) {scale=Math.max(.025,Math.min(4,scale*factor));}
     synchronized double[] center() {return MapPack.unproject(cx,cy);}
