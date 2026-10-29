@@ -10,7 +10,10 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec
 
 def artifact(path):
-    return {'asset':path.name,'sha256':hashlib.sha256(path.read_bytes()).hexdigest(),'sizeBytes':path.stat().st_size}
+    digest=hashlib.sha256()
+    with path.open('rb') as stream:
+        for block in iter(lambda:stream.read(1024*1024),b''):digest.update(block)
+    return {'asset':path.name,'sha256':digest.hexdigest(),'sizeBytes':path.stat().st_size}
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
@@ -45,7 +48,10 @@ def main():
         with sqlite3.connect(path.resolve().as_uri()+'?mode=ro',uri=True) as db:
             if db.execute('pragma quick_check').fetchone()[0]!='ok':
                 parser.error('Regional database integrity failure')
-            metadata={k:json.loads(v) for k,v in db.execute('select key,value from metadata')}
+            metadata={}
+            for k,v in db.execute('select key,value from metadata'):
+                if k in metadata:parser.error('Duplicate regional metadata key')
+                metadata[k]=json.loads(v)
             revision=metadata.get('version')
             if metadata.get('id')!='south-australia' or type(revision) is not int or revision<1 or type(metadata.get('formatVersion')) is not int or metadata['formatVersion']!=1 or metadata.get('gridStep')!=0.025:
                 parser.error('Invalid regional metadata')

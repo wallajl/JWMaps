@@ -42,6 +42,17 @@ class ReleaseManifestTests(unittest.TestCase):
         with sqlite3.connect(db) as c:c.execute("update metadata set value='true' where key='version'")
         self.assertNotEqual(self.run_tool('--region',str(db)).returncode,0)
 
+    def test_refuses_ambiguous_sqlite_metadata_before_signing(self):
+        import sqlite3
+        db=self.root/'south-australia-v3.sqlite'
+        with sqlite3.connect(db) as c:
+            c.execute('create table metadata(key text,value text)')
+            rows=[(k,json.dumps(v)) for k,v in {'id':'south-australia','version':3,'formatVersion':1,'gridStep':0.025}.items()]
+            c.executemany('insert into metadata values (?,?)',rows+[('version','3')])
+            c.execute('create table tiles(x integer,y integer,payload blob,feature_count integer)')
+        self.assertNotEqual(self.run_tool('--region',str(db)).returncode,0)
+        self.assertFalse((self.output/'update-manifest.json').exists())
+
     def test_generates_signature_for_exact_manifest_and_artifact_bytes(self):
         result = self.run_tool()
         self.assertEqual(result.returncode,0,result.stderr)

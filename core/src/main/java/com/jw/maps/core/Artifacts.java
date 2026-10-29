@@ -5,7 +5,7 @@ import java.security.*;
 public final class Artifacts {
     private Artifacts() {}
     public static String hash(byte[] b) throws IOException { try { return hex(MessageDigest.getInstance("SHA-256").digest(b)); } catch(GeneralSecurityException e) { throw new IOException(e); } }
-    private static String hex(byte[] bytes) { StringBuilder s=new StringBuilder(); for(byte b:bytes) s.append(String.format(java.util.Locale.ROOT,"%02x",b&255)); return s.toString(); }
+    private static String hex(byte[] bytes) { char[] alphabet="0123456789abcdef".toCharArray(),out=new char[bytes.length*2];int i=0;for(byte b:bytes){out[i++]=alphabet[(b&255)>>>4];out[i++]=alphabet[b&15];}return new String(out); }
     public static byte[] bounded(InputStream in,int limit) throws IOException {
         ByteArrayOutputStream out=new ByteArrayOutputStream(); byte[] buf=new byte[8192]; int n;
         while((n=in.read(buf))!=-1) { if(out.size()+n>limit) throw new IOException("Response exceeds limit"); out.write(buf,0,n); } return out.toByteArray();
