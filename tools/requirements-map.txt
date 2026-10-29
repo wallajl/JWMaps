@@ -1,0 +1,14 @@
+# Resolved in the dedicated Python 3.11 map-builder venv.
+certifi==2026.10.23
+charset-normalizer==3.5.2
+idna==3.20
+numpy==2.4.6
+osmium==4.3.2
+requests==2.34.2
+shapely==2.2.0
+urllib3==2.8.0
+
+# Existing release-manifest regression tests, not the map conversion path.
+cffi==2.1.1
+cryptography==50.0.2
+pycparser==3.12
