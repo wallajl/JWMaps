@@ -8,7 +8,4 @@ requests==2.34.2
 shapely==2.2.0
 urllib3==2.8.0
 
-# Existing release-manifest regression tests, not the map conversion path.
-cffi==2.1.1
-cryptography==50.0.2
-pycparser==3.12
+# Release-test dependencies are pinned separately in requirements-release.txt.
