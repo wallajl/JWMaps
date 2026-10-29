@@ -42,6 +42,14 @@ The signed 0.2.0 APK was installed over 0.1.1 in an API 35 Android emulator. For
 
 This image is from an Android phone emulator, not a Samsung or Ford display. The pre-release database copy is not evidence of a public network download. The earlier 0.1.0-to-0.1.1 test exercised Android's system APK installer separately.
 
+## Public release download
+
+After publication, all seven release assets were downloaded anonymously and matched the signed local stage byte-for-byte. The unmodified 0.1.1 manifest parser also verified the new signed metadata and correctly selected the APK upgrade while ignoring the optional regional extension.
+
+For the live app test, the preloaded database was moved aside in the isolated emulator. The app then downloaded the full 285,925,376-byte South Australia database from the actual public 0.2.0 release through its normal phone UI. The resulting device file matched the expected SHA-256, and the app reported **South Australia is downloaded and ready offline.** This was an actual network download, separate from the earlier root-ADB setup test.
+
+[The release-source GitHub check passed](https://github.com/wallajl/JWMaps/actions/runs/40967484979). An earlier run failed because two requirements files pinned different cryptography versions. That conflict was corrected before publishing.
+
 ## Update and security boundaries
 
 Regional files are streamed to disk, checked against signed size/hash metadata, validated read-only, then atomically activated. Tests prove that corrupt or downgraded replacements preserve known-good data. Same-version local corruption can be repaired from the signed bytes. Regional state is separate from the CBD setup fallback and APK revisions.
