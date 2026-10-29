@@ -16,6 +16,7 @@ def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--apk',type=Path,required=True)
     parser.add_argument('--data',type=Path,required=True)
+    parser.add_argument('--region',type=Path)
     parser.add_argument('--key',type=Path,required=True)
     parser.add_argument('--output',type=Path,required=True)
     parser.add_argument('--version-name',required=True)
@@ -36,6 +37,22 @@ def main():
     if type(pack.get('version')) is not int or pack['version']<1 or type(pack.get('formatVersion')) is not int or pack['formatVersion']!=1:
         parser.error('Map pack version must be a positive integer and formatVersion must be 1')
     manifest={'schemaVersion':1,'channel':'stable','packageName':'com.jw.maps','app':dict(artifact(args.apk),versionCode=args.version_code,versionName=args.version_name,minSdk=28),'data':dict(artifact(args.data),id=pack['id'],version=pack['version'],formatVersion=pack['formatVersion'])}
+    if args.region:
+        import sqlite3
+        path=args.region
+        if not path.is_file() or not 0<path.stat().st_size<=512*1024*1024:
+            parser.error('Regional database missing or too large')
+        with sqlite3.connect(path.resolve().as_uri()+'?mode=ro',uri=True) as db:
+            if db.execute('pragma quick_check').fetchone()[0]!='ok':
+                parser.error('Regional database integrity failure')
+            metadata={k:json.loads(v) for k,v in db.execute('select key,value from metadata')}
+            revision=metadata.get('version')
+            if metadata.get('id')!='south-australia' or type(revision) is not int or revision<1 or type(metadata.get('formatVersion')) is not int or metadata['formatVersion']!=1 or metadata.get('gridStep')!=0.025:
+                parser.error('Invalid regional metadata')
+            if path.name!=f'south-australia-v{revision}.sqlite':
+                parser.error('Regional filename must match revision')
+            db.execute('select x,y,payload,feature_count from tiles limit 1').fetchall()
+        manifest['region']=dict(artifact(path),id='south-australia',version=revision,formatVersion=1)
     raw=(json.dumps(manifest,sort_keys=True,separators=(',',':'))+'\n').encode()
     key=serialization.load_pem_private_key(args.key.read_bytes(),None)
     if not isinstance(key,ec.EllipticCurvePrivateKey) or not isinstance(key.curve,ec.SECP256R1):

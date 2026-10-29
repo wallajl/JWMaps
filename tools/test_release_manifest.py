@@ -27,6 +27,21 @@ class ReleaseManifestTests(unittest.TestCase):
         self.output = self.root / 'out'
     def run_tool(self, *extra):
         return subprocess.run([sys.executable,str(SCRIPT),'--apk',str(self.apk),'--data',str(self.pack),'--version-name','0.1.0','--version-code','1','--key',str(self.keyfile),'--output',str(self.output),*extra],capture_output=True,text=True)
+    def test_signs_optional_statewide_database_without_changing_legacy_pack(self):
+        import sqlite3
+        db=self.root/'south-australia-v3.sqlite'
+        with sqlite3.connect(db) as c:
+            c.execute('create table metadata (key text primary key,value text not null)')
+            c.executemany('insert into metadata values (?,?)',[(k,json.dumps(v)) for k,v in {'id':'south-australia','version':3,'formatVersion':1,'gridStep':0.025}.items()])
+            c.execute('create table tiles(x integer,y integer,payload blob,feature_count integer, primary key(x,y))')
+        result=self.run_tool('--region',str(db));self.assertEqual(result.returncode,0,result.stderr)
+        raw=(self.output/'update-manifest.json').read_bytes();manifest=json.loads(raw)
+        self.assertEqual(manifest['region']['sha256'],hashlib.sha256(db.read_bytes()).hexdigest())
+        self.assertEqual(manifest['region']['version'],3);self.assertEqual(manifest['data']['id'],'adelaide-cbd')
+        self.key.public_key().verify(base64.b64decode((self.output/'update-manifest.sig').read_bytes()),raw,ec.ECDSA(hashes.SHA256()))
+        with sqlite3.connect(db) as c:c.execute("update metadata set value='true' where key='version'")
+        self.assertNotEqual(self.run_tool('--region',str(db)).returncode,0)
+
     def test_generates_signature_for_exact_manifest_and_artifact_bytes(self):
         result = self.run_tool()
         self.assertEqual(result.returncode,0,result.stderr)

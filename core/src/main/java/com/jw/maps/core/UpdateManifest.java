@@ -13,7 +13,9 @@ public final class UpdateManifest {
     public record Decision(boolean app, boolean data) {}
     public final long appVersion,dataVersion,minSdk;
     public final String versionName,dataId;
-    public final Artifact app,data;
+    public static final long REGION_LIMIT=512L*1024*1024;
+    public final Artifact app,data,region;
+    public final long regionVersion;
     private UpdateManifest(JsonObject o) throws IOException {
         if(Json.integer(o,"schemaVersion")!=1||!Json.str(o,"channel",20).equals("stable")||!Json.str(o,"packageName",100).equals("com.jw.maps")) throw new IOException("Unsupported release");
         JsonObject a=Json.obj(o,"app"), d=Json.obj(o,"data");
@@ -22,6 +24,12 @@ public final class UpdateManifest {
         versionName=Json.str(a,"versionName",64); dataId=Json.str(d,"id",64);
         if(!versionName.matches("[0-9]+\\.[0-9]+\\.[0-9]+")||!dataId.equals("adelaide-cbd")) throw new IOException("Unsupported version or pack");
         app=artifact(a,APK_LIMIT); data=artifact(d,DATA_LIMIT);
+        if(o.has("region")){
+            JsonObject r=Json.obj(o,"region");regionVersion=Json.integer(r,"version");
+            if(!Json.str(r,"id",64).equals("south-australia")||Json.integer(r,"formatVersion")!=1)throw new IOException("Unsupported regional database");
+            region=artifact(r,REGION_LIMIT);
+            if(!region.asset.equals("south-australia-v"+regionVersion+".sqlite"))throw new IOException("Unexpected regional asset name");
+        }else{region=null;regionVersion=0;}
         if(!app.asset.equals("JWMaps-"+versionName+".apk")||!data.asset.equals(dataId+"-v"+dataVersion+".geojson")) throw new IOException("Unexpected asset name");
     }
     private static Artifact artifact(JsonObject o,long max) throws IOException {
