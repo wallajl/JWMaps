@@ -1,0 +1,43 @@
+plugins { id 'com.android.application' }
+android {
+    namespace 'com.jw.maps'
+    compileSdk 36
+    defaultConfig {
+        applicationId 'com.jw.maps'; minSdk 28; targetSdk 36; versionCode 1; versionName '0.1.0'
+        buildConfigField 'boolean', 'EXTERNAL_APK_UPDATES', 'true'
+    }
+    signingConfigs {
+        release {
+            if (System.getenv('JW_SIGNING_STORE')) {
+                storeFile file(System.getenv('JW_SIGNING_STORE'))
+                storePassword System.getenv('JW_SIGNING_STORE_PASSWORD')
+                keyAlias System.getenv('JW_SIGNING_KEY_ALIAS')
+                keyPassword System.getenv('JW_SIGNING_KEY_PASSWORD')
+            }
+        }
+    }
+    buildTypes {
+        release { if (System.getenv('JW_SIGNING_STORE')) signingConfig signingConfigs.release; minifyEnabled false }
+        play {
+            initWith release
+            matchingFallbacks = ['release']
+            buildConfigField 'boolean', 'EXTERNAL_APK_UPDATES', 'false'
+        }
+    }
+    compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+    buildFeatures { buildConfig true }
+    testOptions { unitTests.includeAndroidResources = true }
+    lint { abortOnError true }
+}
+dependencies {
+    implementation project(':core')
+    implementation 'androidx.core:core:1.15.0'
+    implementation 'androidx.car.app:app:1.7.0'
+    implementation 'androidx.work:work-runtime:2.10.1'
+    implementation 'com.google.guava:guava:33.7.2-android'
+    testImplementation 'androidx.car.app:app-testing:1.7.0'
+    testImplementation 'org.mockito:mockito-core:5.14.2'
+    testImplementation 'junit:junit:4.13.2'
+    testImplementation 'org.robolectric:robolectric:4.14.1'
+    testImplementation 'androidx.test:core:1.6.1'
+}
