@@ -20,14 +20,34 @@ public class UpdatePipelineTest {
    byte[] data,manifest,signature;final Map<String,String> assets=new HashMap<>();
    FixtureClient(byte[] b,int version,KeyPair key)throws Exception{
      data=b;JsonObject root=new JsonObject();root.addProperty("schemaVersion",1);root.addProperty("channel","stable");root.addProperty("packageName","com.jw.maps");
-     JsonObject app=new JsonObject();app.addProperty("versionCode",1);app.addProperty("versionName","0.1.0");app.addProperty("asset","JWMaps-0.1.0.apk");app.addProperty("sha256",Artifacts.hash(new byte[]{1}));app.addProperty("sizeBytes",1);app.addProperty("minSdk",28);root.add("app",app);
+     JsonObject app=new JsonObject();app.addProperty("versionCode",BuildConfig.VERSION_CODE);app.addProperty("versionName",BuildConfig.VERSION_NAME);app.addProperty("asset","JWMaps-"+BuildConfig.VERSION_NAME+".apk");app.addProperty("sha256",Artifacts.hash(new byte[]{1}));app.addProperty("sizeBytes",1);app.addProperty("minSdk",28);root.add("app",app);
      JsonObject d=new JsonObject();d.addProperty("id","adelaide-cbd");d.addProperty("version",version);d.addProperty("asset","adelaide-cbd-v"+version+".geojson");d.addProperty("sha256",Artifacts.hash(data));d.addProperty("sizeBytes",data.length);d.addProperty("formatVersion",1);root.add("data",d);manifest=root.toString().getBytes(StandardCharsets.UTF_8);
      Signature signer=Signature.getInstance("SHA256withECDSA");signer.initSign(key.getPrivate());signer.update(manifest);signature=Base64.getEncoder().encode(signer.sign());
-     for(String name:new String[]{"update-manifest.json","update-manifest.sig","JWMaps-0.1.0.apk","adelaide-cbd-v"+version+".geojson"})assets.put(name,"https://github.com/wallajl/JWMaps/releases/download/v0.1.0/"+name);
+     for(String name:new String[]{"update-manifest.json","update-manifest.sig","JWMaps-"+BuildConfig.VERSION_NAME+".apk","adelaide-cbd-v"+version+".geojson"})assets.put(name,"https://github.com/wallajl/JWMaps/releases/download/v0.1.0/"+name);
    }
    @Override Release latest(){return new Release("v0.1.0",assets);}
    @Override byte[] bytes(Release r,String asset,int max){return asset.endsWith(".sig")?signature:manifest;}
    @Override void download(Release r,UpdateManifest.Artifact a,File out,long max)throws IOException{Artifacts.download(new ByteArrayInputStream(data),out,a,max);}
+ }
+ @Test public void failedApkStageKeepsIndependentDataCommitAndRetriesOnlyTheApp()throws Exception{
+   org.junit.Assume.assumeTrue(BuildConfig.EXTERNAL_APK_UPDATES);
+   MapsApplication app=ApplicationProvider.getApplicationContext();app.getSharedPreferences(Updates.PREFS,0).edit().clear().commit();app.activate(pack(1),1);
+   KeyPairGenerator generator=KeyPairGenerator.getInstance("EC");generator.initialize(256);KeyPair key=generator.generateKeyPair();
+   int[] downloads={0,0};
+   FixtureClient client=new FixtureClient(pack(2),2,key){
+     @Override void download(Release r,UpdateManifest.Artifact a,File out,long max)throws IOException{
+       downloads[a.asset().endsWith(".apk")?1:0]++;super.download(r,a,out,max);
+     }
+   };
+   JsonObject root=JsonParser.parseString(new String(client.manifest,StandardCharsets.UTF_8)).getAsJsonObject();
+   root.getAsJsonObject("app").addProperty("versionCode",BuildConfig.VERSION_CODE+1);root.getAsJsonObject("app").addProperty("versionName","0.2.0");root.getAsJsonObject("app").addProperty("asset","JWMaps-0.2.0.apk");
+   client.assets.put("JWMaps-0.2.0.apk","https://github.com/wallajl/JWMaps/releases/download/v0.1.0/JWMaps-0.2.0.apk");
+   client.manifest=root.toString().getBytes(StandardCharsets.UTF_8);Signature signer=Signature.getInstance("SHA256withECDSA");signer.initSign(key.getPrivate());signer.update(client.manifest);client.signature=Base64.getEncoder().encode(signer.sign());
+   String result=Updates.check(app,client,key.getPublic());
+   assertTrue(result,result.contains("Map pack updated"));assertTrue(result,result.contains("App update not staged"));
+   assertEquals(2,app.loadPack().version);assertEquals(2,app.getSharedPreferences(Updates.PREFS,0).getLong("highestData",0));
+   Updates.check(app,client,key.getPublic());
+   assertEquals("Already active map must not download again",1,downloads[0]);assertEquals("A failed app stage must remain retryable",2,downloads[1]);assertEquals(2,app.loadPack().version);
  }
  @Test public void signedDataOnlyUpdateCommitsThenMalformedAndReplayedDataPreserveGoodState()throws Exception{
    MapsApplication app=ApplicationProvider.getApplicationContext();app.getSharedPreferences(Updates.PREFS,0).edit().clear().commit();app.activate(pack(1),1);

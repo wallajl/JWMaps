@@ -30,6 +30,7 @@ final class Updates {
             if(now<prefs.getLong("notBefore",0)) return "Update checks paused by GitHub rate limit. Try later.";
             prefs.edit().putLong("lastCheck",now).commit();
             File dataDownload=new File(dir(c),"data.download");
+            boolean dataApplied=false;
             try {
                 ReleaseClient.Release r=client.latest();
                 byte[] json=client.bytes(r,"update-manifest.json",65536),sig=client.bytes(r,"update-manifest.sig",256);
@@ -43,6 +44,8 @@ final class Updates {
                     client.download(r,m.data,dataDownload,UpdateManifest.DATA_LIMIT);
                     byte[] bytes; try(InputStream in=new FileInputStream(dataDownload)) { bytes=Artifacts.bounded(in,(int)UpdateManifest.DATA_LIMIT); }
                     ((MapsApplication)c.getApplicationContext()).activate(bytes,m.dataVersion);
+                    dataApplied=true;
+                    if(!prefs.edit().putLong("highestData",m.dataVersion).commit())throw new IOException("Could not persist map update state");
                 }
                 if(decision.app() && BuildConfig.EXTERNAL_APK_UPDATES) {
                     // Always recheck staged bytes against the current signed release.
@@ -53,9 +56,10 @@ final class Updates {
                 if(!prefs.edit().putLong("highestApp",m.appVersion).putLong("highestData",m.dataVersion).putString("status",decision.app()?(BuildConfig.EXTERNAL_APK_UPDATES?"Verified app update ready. Install from this phone.":"A new app version is available. Update through Google Play."):decision.data()?"Map pack updated. App is current.":"App and map pack are current.").commit()) throw new IOException("Could not persist update state");
                 return prefs.getString("status","");
             } catch(ReleaseClient.RateLimited e) {
-                prefs.edit().putLong("notBefore",now+TimeUnit.HOURS.toMillis(6)).putString("status",e.getMessage()).commit(); return e.getMessage();
+                String status=(dataApplied?"Map pack updated. App update delayed: ":"")+e.getMessage();
+                prefs.edit().putLong("notBefore",now+TimeUnit.HOURS.toMillis(6)).putString("status",status).commit();return status;
             } catch(Exception e) {
-                String status="Update not applied: "+(e.getMessage()==null?"connection or validation failed":e.getMessage()); prefs.edit().putString("status",status).commit(); return status;
+                String status=(dataApplied?"Map pack updated. App update not staged: ":"Update not applied: ")+(e.getMessage()==null?"connection or validation failed":e.getMessage()); prefs.edit().putString("status",status).commit(); return status;
             } finally { dataDownload.delete(); new File(dataDownload+".part").delete(); new File(apk(c)+".part").delete(); }
         }
     }
