@@ -29,29 +29,32 @@ public final class MapsCarScreen extends Screen implements DefaultLifecycleObser
     }
     private void refreshPack(){
         MapsApplication app=(MapsApplication)getCarContext().getApplicationContext();
-        app.io.execute(()->{MapPack p=app.loadPack();main.post(()->{if(!destroyed){renderer.setPack(p);redraw();if(started)invalidate();}});});
+        app.io.execute(()->{MapPack p=app.loadPack();main.post(()->{if(!destroyed){if(renderer.pack()==null||!renderer.pack().id.equals("south-australia"))renderer.setPack(p);redraw();if(started)invalidate();}});});
     }
     @Override public void onStop(@NonNull LifecycleOwner owner){started=false;main.removeCallbacks(tick);location.stop();getCarContext().getCarService(AppManager.class).setSurfaceCallback(null);release();}
-    @Override public void onDestroy(@NonNull LifecycleOwner owner){destroyed=true;started=false;main.removeCallbacksAndMessages(null);location.stop();release();}
+    @Override public void onDestroy(@NonNull LifecycleOwner owner){destroyed=true;started=false;main.removeCallbacksAndMessages(null);location.stop();((MapsApplication)getCarContext().getApplicationContext()).forgetRegion(renderer);release();}
     @NonNull @Override public Template onGetTemplate(){
         MapPack p=renderer.pack();Location fix=location.fix();boolean live=fix!=null&&p!=null&&p.covers(fix.getLongitude(),fix.getLatitude());
-        ItemList.Builder list=new ItemList.Builder().setNoItemsMessage("No named places in this map pack");
-        String status=p==null?"Loading Adelaide preview":live?"Nearby places":fix!=null?"Outside coverage · Adelaide preview":"Adelaide city-centre preview";
+        MapsApplication app=(MapsApplication)getCarContext().getApplicationContext();boolean regional=p!=null&&p.id.equals("south-australia");
+        ItemList.Builder list=new ItemList.Builder().setNoItemsMessage("No named places in this loaded window");
+        String status=app.hasRegion()?(live?"South Australia · Nearby places":"South Australia · Local window"):p==null?"Loading Adelaide preview":live?"Nearby places":fix!=null?"Outside coverage · Adelaide preview":"Adelaide city-centre preview";
         if(p!=null){
             double lon=live?fix.getLongitude():(p.bbox[0]+p.bbox[2])/2,lat=live?fix.getLatitude():(p.bbox[1]+p.bbox[3])/2;
-            for(MapPack.Feature f:p.nearby(lon,lat,5))list.addItem(new Row.Builder().setTitle(f.name).addText(MainActivity.distance(MapPack.distance(lon,lat,f.lon,f.lat))+(live?" away":" from preview centre")).setOnClickListener(()->{renderer.center(f.lon,f.lat);redraw();}).build());
+            for(MapPack.Feature f:p.nearby(lon,lat,5))list.addItem(new Row.Builder().setTitle(f.name).addText(MainActivity.distance(MapPack.distance(lon,lat,f.lon,f.lat))+(live?" away":regional?" from window centre":" from preview centre")).setOnClickListener(()->{renderer.center(f.lon,f.lat);redraw();}).build());
         }
-        list.addItem(new Row.Builder().setTitle("© OpenStreetMap contributors · ODbL").addText(live?"Explorer only · no route guidance":"Set up location on phone while parked").build());
+        list.addItem(new Row.Builder().setTitle("© OpenStreetMap contributors · ODbL").addText(app.hasRegion()?app.regionStatus(renderer):live?"Explorer only · no route guidance":"Set up location on phone while parked").addText("North up · Dashed line is the local window boundary").build());
         ListTemplate content=new ListTemplate.Builder().setSingleList(list.build()).setHeader(new Header.Builder().setTitle(status).setStartHeaderAction(Action.APP_ICON).build()).build();
         ActionStrip mapActions=new ActionStrip.Builder().addAction(Action.PAN).build();
         ActionStrip actions=new ActionStrip.Builder()
                 .addAction(new Action.Builder().setTitle("Zoom in").setOnClickListener(()->{renderer.zoom(1.5);redraw();}).build())
                 .addAction(new Action.Builder().setTitle("Zoom out").setOnClickListener(()->{renderer.zoom(1/1.5);redraw();}).build())
-                .addAction(new Action.Builder().setTitle("Recenter").setOnClickListener(()->{renderer.recenter();redraw();}).build()).build();
+                .addAction(new Action.Builder().setTitle("Follow me").setOnClickListener(()->{renderer.recenter();redraw();}).build()).build();
         return new MapWithContentTemplate.Builder().setContentTemplate(content).setActionStrip(actions).setMapController(new MapController.Builder().setMapActionStrip(mapActions).build()).build();
     }
     void redraw(){
-        renderer.setLocation(location.fix());if(!started||surface==null||!surface.isValid())return;
+        if(destroyed)return;
+        renderer.setLocation(location.fix());((MapsApplication)getCarContext().getApplicationContext()).requestRegion(renderer,()->{if(!destroyed){redraw();if(started)invalidate();}});
+        if(!started||surface==null||!surface.isValid())return;
         Canvas canvas=null;
         try{canvas=surface.lockCanvas(null);renderer.draw(canvas,viewport(),getCarContext().isDarkMode(),dpi/160f);}
         catch(IllegalArgumentException|IllegalStateException ignored){/* Host can destroy its surface between callbacks. */}

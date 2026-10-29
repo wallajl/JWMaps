@@ -4,10 +4,11 @@ import android.graphics.*;
 import android.view.*;
 final class MapView extends View {
     final MapRenderer renderer=new MapRenderer();
+    Runnable changed=this::invalidate;
     private final ScaleGestureDetector scale;
     private final GestureDetector gestures;
     MapView(Context context) {
-        super(context);setContentDescription("Adelaide city-centre map. Drag to pan. Pinch or use zoom buttons to zoom.");setFocusable(true);
+        super(context);setContentDescription("Map explorer. Drag to pan and pause GPS follow. Pinch or use zoom buttons to zoom.");setFocusable(true);
         scale=new ScaleGestureDetector(context,new ScaleGestureDetector.SimpleOnScaleGestureListener(){ @Override public boolean onScale(ScaleGestureDetector d){renderer.zoom(d.getScaleFactor());invalidate();return true;}});
         gestures=new GestureDetector(context,new GestureDetector.SimpleOnGestureListener(){
             @Override public boolean onDown(MotionEvent e){return true;}
@@ -17,7 +18,8 @@ final class MapView extends View {
         });
     }
     private final Rect bounds=new Rect();
-    @Override protected void onDraw(Canvas c){super.onDraw(c);bounds.set(0,0,getWidth(),getHeight());renderer.draw(c,bounds,true,getResources().getDisplayMetrics().density);}
+    @Override protected void onDraw(Canvas c){super.onDraw(c);((MapsApplication)getContext().getApplicationContext()).requestRegion(renderer,changed);bounds.set(0,0,getWidth(),getHeight());renderer.draw(c,bounds,true,getResources().getDisplayMetrics().density);}
+    @Override protected void onDetachedFromWindow(){((MapsApplication)getContext().getApplicationContext()).forgetRegion(renderer);super.onDetachedFromWindow();}
     @android.annotation.SuppressLint("ClickableViewAccessibility") // GestureDetector dispatches single taps to the performClick override.
     @Override public boolean onTouchEvent(MotionEvent e){scale.onTouchEvent(e);gestures.onTouchEvent(e);return true;}
     @Override public boolean performClick(){super.performClick();return true;}
