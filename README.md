@@ -1,5 +1,11 @@
 # JWMaps
 
+[Download the latest release](https://github.com/wallajl/JWMaps/releases/latest) · [Verification and limits](docs/TESTING.md)
+
+![JWMaps phone preview in an Android emulator with simulated Adelaide GPS](docs/screenshots/phone-emulator.png)
+
+*Android emulator preview, not a Samsung or Ford screen capture.*
+
 A Minecraft-inspired view of real-world maps for Android, with an Android Auto POI interface and signed app/data updates. No mapping subscription or GitHub login is required.
 
 **This is an early map-explorer preview, not a finished navigation app.** It does not yet calculate routes, provide turn-by-turn directions, import Waze traffic or download worldwide coverage.

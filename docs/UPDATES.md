@@ -34,7 +34,9 @@ Local phone emulator tests and Car App Library session tests do not establish ac
 2. Run the complete test suite and lint. Build `assembleRelease` with the existing dedicated Android signing configuration provided through `JW_SIGNING_STORE`, `JW_SIGNING_STORE_PASSWORD`, `JW_SIGNING_KEY_ALIAS` and `JW_SIGNING_KEY_PASSWORD`. Never commit those values or the key store.
 3. Verify the APK with Android SDK `apksigner verify --verbose --print-certs` and inspect package/version with `aapt dump badging`. Name it `JWMaps-<version>.apk`.
 4. Generate metadata with `python tools/release_manifest.py --apk <APK> --data <PACK> --version-name <VERSION> --version-code <CODE> --key <PRIVATE_MANIFEST_KEY> --output <RELEASE_DIRECTORY>`. The manifest key is a separate P-256 private key. Its public half is pinned in `UpdateManifest`.
-5. Publish the APK, versioned GeoJSON, `update-manifest.json` and `update-manifest.sig` together in one non-prerelease GitHub release. Re-download the assets and verify them before directing users to install.
+5. Create a draft release tied to the tested full commit SHA. Upload the APK, versioned GeoJSON, `update-manifest.json` and `update-manifest.sig`. Download the draft assets and compare their bytes, then publish it as a non-prerelease release. Verify anonymous downloads before directing users to install.
+
+Version checks follow published stable releases, not every source commit. A source push runs CI but does not ship an update. Without the signing environment variables, Gradle produces an unsigned release APK. Never distribute that file.
 
 The metadata tool signs supplied artifact bytes. It does not certify that an input file is a valid APK. APK identity and Android signing checks in step 3 are mandatory.
 
