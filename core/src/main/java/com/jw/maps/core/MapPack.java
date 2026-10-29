@@ -10,21 +10,22 @@ public final class MapPack {
     public final double[] bbox;
     public final List<Feature> features;
     public static final class Feature {
-        public final String kind,name,type;
+        public final String id,kind,name,type;
+        private final String fingerprint;
         public final List<double[][]> paths;
         public final double lon,lat,height;
-        Feature(String k,String n,String t,List<double[][]> p,double h) { kind=k; name=n; type=t; paths=Collections.unmodifiableList(p); lon=p.get(0)[0][0]; lat=p.get(0)[0][1]; height=h; }
+        Feature(String id,String fingerprint,String k,String n,String t,List<double[][]> p,double h) { this.id=id;this.fingerprint=fingerprint;kind=k; name=n; type=t; paths=Collections.unmodifiableList(p); lon=p.get(0)[0][0]; lat=p.get(0)[0][1]; height=h; }
     }
     private MapPack(JsonObject root) throws IOException {
         if(!Json.str(root,"type",32).equals("FeatureCollection")) throw new IOException("Not a FeatureCollection");
         JsonObject p=Json.obj(root,"pack"); id=Json.str(p,"id",64); version=Json.integer(p,"version");
-        if(!id.equals("adelaide-cbd")||Json.integer(p,"formatVersion")!=1) throw new IOException("Unsupported map pack");
+        if((!id.equals("adelaide-cbd")&&!id.equals("south-australia"))||Json.integer(p,"formatVersion")!=1) throw new IOException("Unsupported map pack");
         name=Json.str(p,"name",160); attribution=Json.str(p,"attribution",300); sourceUrl=Json.str(p,"sourceUrl",500);
         if(!attribution.contains("OpenStreetMap")||!sourceUrl.startsWith("https://")) throw new IOException("Missing map attribution");
         JsonArray bounds=array(root.get("bbox")); if(bounds.size()!=4) throw new IOException("Invalid bbox"); bbox=new double[4];
         for(int i=0;i<4;i++) bbox[i]=number(bounds.get(i));
         if(bbox[0]<-180||bbox[2]>180||bbox[1]<-85||bbox[3]>85||bbox[0]>=bbox[2]||bbox[1]>=bbox[3]||bbox[2]-bbox[0]>5||bbox[3]-bbox[1]>5) throw new IOException("Invalid coverage bounds");
-        JsonArray fs=array(root.get("features")); if(fs.size()==0||fs.size()>60000) throw new IOException("Feature count limit");
+        JsonArray fs=array(root.get("features")); if((fs.size()==0&&!id.equals("south-australia"))||fs.size()>60000) throw new IOException("Feature count limit");
         List<Feature> out=new ArrayList<>(); int[] count={0};
         for(JsonElement el:fs) {
             if(!el.isJsonObject()) throw new IOException("Invalid feature"); JsonObject f=el.getAsJsonObject();
@@ -40,9 +41,31 @@ public final class MapPack {
             else throw new IOException("Unsupported geometry");
             double height=8; // Rendering default in metres, not a measured building height.
             if(props.has("height")&&props.get("height").isJsonPrimitive()&&props.get("height").getAsJsonPrimitive().isNumber()) height=Math.max(1,Math.min(150,number(props.get("height"))));
-            out.add(new Feature(kind,n,type,paths,height));
+            String featureId=f.has("id")&&f.get("id").isJsonPrimitive()?f.get("id").getAsString():"";
+            if(featureId.length()>160)throw new IOException("Feature identifier limit");
+            out.add(new Feature(featureId,Artifacts.hash(f.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8)),kind,n,type,paths,height));
         }
         features=Collections.unmodifiableList(out);
+    }
+    private MapPack(MapPack metadata,List<Feature> fs) {
+        id=metadata.id;version=metadata.version;name=metadata.name;attribution=metadata.attribution;sourceUrl=metadata.sourceUrl;bbox=metadata.bbox.clone();features=Collections.unmodifiableList(fs);
+    }
+    /** A bounded nine-tile view. Full-state geometry is never loaded into this model. */
+    public static MapPack window(List<MapPack> tiles,double[] bounds,long version,String source) throws IOException {
+        if(tiles.size()>9||version<1||bounds==null||bounds.length!=4)throw new IOException("Invalid regional window");
+        JsonObject root=new JsonObject(),meta=new JsonObject();root.addProperty("type","FeatureCollection");
+        meta.addProperty("id","south-australia");meta.addProperty("version",version);meta.addProperty("formatVersion",1);meta.addProperty("name","South Australia");meta.addProperty("attribution","© OpenStreetMap contributors, ODbL 1.0");meta.addProperty("sourceUrl",source);root.add("pack",meta);
+        JsonArray bbox=new JsonArray();for(double v:bounds)bbox.add(v);root.add("bbox",bbox);root.add("features",new JsonArray());
+        MapPack metadata=new MapPack(root);List<Feature> out=new ArrayList<>();Set<String> seen=new HashSet<>();long points=0;
+        for(MapPack tile:tiles){
+            if(!tile.id.equals("south-australia")||tile.version!=version||!tile.sourceUrl.equals(source))throw new IOException("Mixed regional sources or revisions");
+            for(Feature f:tile.features)if(seen.add(f.fingerprint)){
+                for(double[][] path:f.paths)points+=path.length;
+                if(out.size()>=60000||points>400000)throw new IOException("Regional density exceeds safe display limit");
+                out.add(f);
+            }
+        }
+        return new MapPack(metadata,out);
     }
     public static MapPack parse(byte[] b) throws IOException {
         try { return new MapPack(Json.object(b,(int)UpdateManifest.DATA_LIMIT)); }

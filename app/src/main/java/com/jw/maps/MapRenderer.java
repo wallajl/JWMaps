@@ -58,6 +58,7 @@ final class MapRenderer {
     synchronized void pan(float dx,float dy) {cx-=dx/scale;cy+=dy/scale;following=false;}
     synchronized void zoom(double factor) {scale=Math.max(.025,Math.min(4,scale*factor));}
     synchronized double[] center() {return MapPack.unproject(cx,cy);}
+    synchronized double[] requestedCenter() {return following&&location!=null?new double[]{location.getLongitude(),location.getLatitude()}:pack==null?new double[]{138.60,-34.92}:center();}
     private float x(double x,Rect bounds) {return (float)((x-cx)*scale+bounds.exactCenterX());}
     private float y(double y,Rect bounds) {return (float)((cy-y)*scale+bounds.exactCenterY());}
     synchronized void draw(Canvas c,Rect viewport,boolean dark,float density) {

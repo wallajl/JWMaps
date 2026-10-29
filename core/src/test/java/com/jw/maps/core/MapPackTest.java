@@ -7,6 +7,22 @@ import static org.junit.Assert.*;
 public class MapPackTest {
     @Rule public TemporaryFolder tmp=new TemporaryFolder();
     public static byte[] pack(int version) { return ("{\"type\":\"FeatureCollection\",\"pack\":{\"id\":\"adelaide-cbd\",\"version\":"+version+",\"formatVersion\":1,\"name\":\"Adelaide city centre\",\"attribution\":\"© OpenStreetMap contributors\",\"sourceUrl\":\"https://www.openstreetmap.org\"},\"bbox\":[138.5,-35,138.7,-34.8],\"features\":[{\"type\":\"Feature\",\"properties\":{\"kind\":\"poi\",\"name\":\"Test place\"},\"geometry\":{\"type\":\"Point\",\"coordinates\":[138.6,-34.9]}}]}").getBytes(java.nio.charset.StandardCharsets.UTF_8); }
+    @Test public void southAustraliaAllowsGenuineEmptyRuralTiles() throws Exception {
+        com.google.gson.JsonObject root=com.google.gson.JsonParser.parseString(new String(pack(3),java.nio.charset.StandardCharsets.UTF_8)).getAsJsonObject();
+        root.getAsJsonObject("pack").addProperty("id","south-australia");root.add("features",new com.google.gson.JsonArray());
+        assertTrue(MapPack.parse(root.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8)).features.isEmpty());
+        root.getAsJsonObject("pack").addProperty("id","untrusted-other-state");
+        assertThrows(IOException.class,()->MapPack.parse(root.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+    }
+    @Test public void statewideWindowDeduplicatesTileSeamsAndRejectsMixedRevisions() throws Exception {
+        byte[] bytes=new String(pack(3),java.nio.charset.StandardCharsets.UTF_8).replace("adelaide-cbd","south-australia").getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        MapPack tile=MapPack.parse(bytes);
+        MapPack window=MapPack.window(java.util.Arrays.asList(tile,tile),tile.bbox,3,tile.sourceUrl);
+        assertEquals("south-australia",window.id);assertEquals(1,window.features.size());assertEquals(3,window.version);
+        assertThrows(IOException.class,()->MapPack.window(java.util.List.of(tile),tile.bbox,4,tile.sourceUrl));
+        assertThrows(IOException.class,()->MapPack.window(java.util.Collections.nCopies(10,tile),tile.bbox,3,tile.sourceUrl));
+        assertThrows(IOException.class,()->MapPack.window(java.util.List.of(tile),new double[]{0,0,180,90},3,tile.sourceUrl));
+    }
     @Test public void projectionCoverageAndNearbyAreTruthful() throws Exception {
         MapPack p=MapPack.parse(pack(1)); assertTrue(p.covers(138.6,-34.9)); assertFalse(p.covers(139,-34.9));
         double[] xy=MapPack.project(138.6,-34.9), ll=MapPack.unproject(xy[0],xy[1]); assertEquals(138.6,ll[0],1e-8); assertEquals(-34.9,ll[1],1e-8);
