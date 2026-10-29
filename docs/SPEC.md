@@ -65,6 +65,16 @@ Periodic network-connected checks run approximately every 12 hours with WorkMana
 
 GeoJSON FeatureCollection with `pack` metadata, `bbox` and `features`. `pack` has `id`, positive integer `version`, `formatVersion:1`, `name`, `attribution` and `sourceUrl`. Feature geometry is LineString, Polygon or Point. `properties.kind` is `road`, `building`, `water`, `park` or `poi`. Names may be absent. OSM IDs and tags that affect rendering may be preserved. Heights may be OSM-sourced or an explicitly documented rendering default, not a claimed measured height. Validate finite WGS84 coordinates, nesting, lengths and count limits before drawing. OSM attribution must remain visible on phone and car.
 
+## Statewide scope and follow mode
+
+South Australia-wide coverage supersedes the initial CBD-only demonstration. Use the full public Geofabrik South Australia OSM extract, preserve source provenance, and report omitted or unsupported geometry. Do not fetch the state through the bounded OSM map endpoint. The database stores supported geometry statewide; only the current local tile window enters the renderer.
+
+Phone and car maps follow the first usable GPS fix by default, including fixes outside the previous local window. The camera stays north-up and the location marker displays bearing when available. Panning or selecting a place pauses follow. Recenter resumes it. Replacing a map pack or crossing a tile boundary must not reset the camera, zoom or follow choice. This is map following, not route guidance.
+
+A signed optional `region` artifact extends the existing release protocol without removing the legacy CBD fallback fields. Validate the streamed SQLite file before atomic activation, preserve known-good data on failure, and prevent regional downgrades independently of APK or fallback data revisions. Phone-only manual setup and unmetered background downloads are separate from car rendering. No car download or installation prompts.
+
+State coverage does not mean every real-world feature exists in OSM. A local tile-window boundary is not the state boundary. Empty rural windows must be labelled honestly. Android Auto admission and actual vehicle verification remain separate requirements.
+
 ## Test boundaries
 
 - Signed manifest to update decisions, including data-only updates, bad signatures, strict parsing and downgrade refusal.

@@ -21,9 +21,11 @@ final class Updates {
     static File dir(Context c) { File d=new File(c.getFilesDir(),"updates"); if(!d.exists()&&!d.mkdirs()) throw new IllegalStateException("Cannot create update directory"); return d; }
     static File apk(Context c) { return new File(dir(c),"JWMaps.apk"); }
     @android.annotation.SuppressLint("ApplySharedPref") // Checks run off the UI thread; revision state must reach disk before success.
-    static String check(Context c) { return check(c,new ReleaseClient(),null); }
+    static String check(Context c) { return check(c,false); }
+    static String check(Context c,boolean allowMetered) { return check(c,new ReleaseClient(),null,allowMetered); }
     @android.annotation.SuppressLint("ApplySharedPref") // Off-main-thread atomic rollback state.
-    static String check(Context c,ReleaseClient client,java.security.PublicKey testKey) {
+    static String check(Context c,ReleaseClient client,java.security.PublicKey testKey) {return check(c,client,testKey,false);}
+    static String check(Context c,ReleaseClient client,java.security.PublicKey testKey,boolean allowMetered) {
         synchronized(LOCK) {
             SharedPreferences prefs=c.getSharedPreferences(PREFS,0);
             long now=System.currentTimeMillis();
@@ -54,6 +56,17 @@ final class Updates {
                     catch(Exception e) { apk(c).delete(); throw e; }
                 } else { apk(c).delete(); }
                 if(!prefs.edit().putLong("highestApp",m.appVersion).putLong("highestData",m.dataVersion).putString("status",decision.app()?(BuildConfig.EXTERNAL_APK_UPDATES?"Verified app update ready. Install from this phone.":"A new app version is available. Update through Google Play."):decision.data()?"Map pack updated. App is current.":"App and map pack are current.").commit()) throw new IOException("Could not persist update state");
+                if(m.region!=null){
+                    String base=prefs.getString("status","");
+                    try{
+                        r.asset(m.region.asset());
+                        if(RegionUpdates.apply(c,client,r,m,allowMetered)){
+                            ((MapsApplication)c.getApplicationContext()).regionActivated();
+                            base+=" South Australia is downloaded and ready offline.";
+                        }else base+=" South Australia map is current.";
+                    }catch(IOException e){base+=" South Australia not updated: "+e.getMessage();}
+                    prefs.edit().putString("status",base).commit();
+                }
                 return prefs.getString("status","");
             } catch(ReleaseClient.RateLimited e) {
                 String status=(dataApplied?"Map pack updated. App update delayed: ":"")+e.getMessage();

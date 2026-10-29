@@ -16,6 +16,11 @@ public class FollowModeTest {
     }
     private Location fix(double lon,double lat) { Location l=new Location("gps");l.setLongitude(lon);l.setLatitude(lat);return l; }
     private void assertCenter(MapRenderer r,double lon,double lat) {assertArrayEquals(new double[]{lon,lat},r.center(),0.0000001);}
+    @Test public void defaultFollowViewUsesLocalStreetScale() throws Exception {
+        MapRenderer r=new MapRenderer();r.setPack(pack());r.setLocation(fix(138.601,-34.923));
+        double[] before=MapPack.project(r.center()[0],r.center()[1]);r.pan(60,0);double[] after=MapPack.project(r.center()[0],r.center()[1]);
+        assertEquals(-60/.6,after[0]-before[0],1e-6);
+    }
     @Test public void firstLocationAutomaticallyFollowsWithoutPressingRecenter() throws Exception {
         MapRenderer r=new MapRenderer();r.setPack(pack());r.setLocation(fix(138.601,-34.923));
         assertCenter(r,138.601,-34.923);

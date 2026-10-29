@@ -42,6 +42,14 @@ The metadata tool signs supplied artifact bytes. It does not certify that an inp
 
 Keep secure backups of both signing keys. Losing the Android key prevents compatible standalone upgrades. Losing the manifest key requires a deliberately planned trust-key migration.
 
+## South Australia expansion
+
+The 0.2 preview adds a separate South Australia SQLite artifact without changing the legacy CBD `data` field. The signed root manifest's optional `region` object contains `id: south-australia`, an integer revision, `formatVersion: 1`, a version-named `.sqlite` asset, its exact byte count and SHA-256. Older apps can still validate the existing fields and download the new APK.
+
+The app streams regional downloads to a staging file, verifies their size and hash, opens SQLite read-only to check its schema, integrity and signed revision, then replaces the active database atomically. A failed download or validation leaves the existing database untouched. Regional rollback state is independent of the CBD fallback and APK versions. Regional files are capped at 512 MiB. Background regional downloads wait for an unmetered connection; a manual phone download can use mobile data.
+
+Only a local nine-tile window is decompressed and parsed for rendering. Moving GPS or panning selects another window. The whole state is stored on disk, not loaded into the renderer. Empty rural windows mean the source has no supported features there. OSM coverage is not a claim that every real building, track or place is mapped.
+
 ## Official references
 
 - [Test Android apps for cars](https://developer.android.com/training/cars/testing)

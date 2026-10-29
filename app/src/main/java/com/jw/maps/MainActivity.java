@@ -83,7 +83,7 @@ public final class MainActivity extends Activity {
             case "Updates":
                 heading("App & map updates");line("JWMaps "+BuildConfig.VERSION_NAME+" · "+(p==null?"No map loaded":p.name+" v"+p.version));
                 line(app().regionStatus());
-                if(!app().hasRegion()){Button download=button(checking?"Checking…":"Download South Australia",this::checkUpdates);download.setEnabled(!checking);content.addView(download);}
+                if(!app().hasRegion()){Button download=button(checking?"Checking…":"Download South Australia",this::downloadSouthAustralia);download.setEnabled(!checking);content.addView(download);}
                 line("South Australia uses local 3×3 tile windows from the installed OSM extract. Rural tiles may contain no mapped features. OSM detail and extract boundaries limit coverage.");
                 line(getSharedPreferences(Updates.PREFS,0).getString("status","Checks use public GitHub releases. No account or location upload."));
                 Button check=button(checking?"Checking…":"Check for updates",this::checkUpdates);check.setEnabled(!checking);content.addView(check);
@@ -110,7 +110,9 @@ public final class MainActivity extends Activity {
                 for(MapPack.Feature f:places){Button b=button(f.name+" · "+distance(MapPack.distance(lon,lat,f.lon,f.lat))+(live?" away":regional?" from window centre":" from preview centre"),()->{map.renderer.center(f.lon,f.lat);map.invalidate();});b.setAllCaps(false);b.setGravity(Gravity.START|Gravity.CENTER_VERTICAL);content.addView(b);}
         }
     }
-    private void checkUpdates(){checking=true;refreshPanel();app().io.execute(()->{Updates.check(this);MapPack p=app().loadPack();runOnUiThread(()->{checking=false;if(!isDestroyed()){if(map.renderer.pack()==null||!map.renderer.pack().id.equals("south-australia"))map.renderer.setPack(p);refresh();}});});}
+    private void downloadSouthAustralia(){new AlertDialog.Builder(this).setTitle("Download South Australia?").setMessage("The full offline map can use several hundred MB of mobile data. Wi-Fi is recommended. Your existing map stays available until the download is verified.").setPositiveButton("Download",(d,w)->checkUpdates(true)).setNegativeButton("Cancel",null).show();}
+    private void checkUpdates(){checkUpdates(false);}
+    private void checkUpdates(boolean allowMetered){checking=true;refreshPanel();app().io.execute(()->{Updates.check(this,allowMetered);MapPack p=app().loadPack();runOnUiThread(()->{checking=false;if(!isDestroyed()){if(map.renderer.pack()==null||!map.renderer.pack().id.equals("south-australia"))map.renderer.setPack(p);refresh();}});});}
     private void install(){
         if(!BuildConfig.EXTERNAL_APK_UPDATES)return;
         app().io.execute(()->{try{UpdateManifest manifest=Updates.staged(this);runOnUiThread(()->{if(isDestroyed())return;

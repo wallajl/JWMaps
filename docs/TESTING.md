@@ -1,51 +1,57 @@
-# Verification for JWMaps 0.1.1
+# Verification for JWMaps 0.2.0
 
-These checks describe the published preview, not a claim of production navigation or Ford compatibility.
+These checks cover the South Australia map explorer and GPS-follow implementation. They do not establish Android Auto admission or compatibility with a physical Ford Ranger.
+
+## Statewide data
+
+The full dated Geofabrik South Australia extract was downloaded over HTTPS and checked against its publisher checksum. Its OSM replication timestamp is 2026-10-28T21:21:02Z.
+
+The resulting database contains **757,011 converted source geometry features** in **114,325 tiles**. These are geometry counts, not unique OSM objects. The database is 285,925,376 bytes. [Public provenance, counts and omissions](../map-data/SOUTH-AUSTRALIA-RELEASE.json) and [reproduction instructions](../map-data/SOUTH-AUSTRALIA.md) are included.
+
+An independent audit decompressed every tile, checked schema, coordinates, geometry validity, tile membership and identity consistency, reconciled source features with the staging database, and reconstructed the ten largest clipped polygons within the documented coordinate-rounding tolerance. SQLite `integrity_check` passed. No feature or tile window was silently truncated.
+
+The largest compressed tile is 601,456 bytes, below the runtime's 1 MiB blob cap. The largest nine-tile window is 27,278,462 uncompressed bytes, below the 32 MiB window cap. It contains at most 57,920 stored feature rows and 357,911 coordinates, below the separate safety limits.
+
+A decimal-grid boundary regression was found and fixed before release. One missing boundary membership was repaired, and the complete output was audited afterward.
 
 ## Automated checks
 
-The local run covered 31 distinct automated tests: 19 Java/Android tests and 12 Python publisher/map-tool tests. Across debug, standalone release and Play variants, there were 50 passing executions and one intentional skip. The skipped scenario tests standalone APK staging and does not apply to the Play build, where that path is disabled.
+The final local run covered 42 distinct Java/Android tests and 23 Python tests. Variant executions were:
 
-| Test group | Cases | Failures/errors | Skipped |
+| Group | Cases | Failures/errors | Skipped |
 | --- | ---: | ---: | ---: |
-| Java update/map core | 8 | 0 | 0 |
-| Android debug | 10 | 0 | 0 |
-| Android standalone release | 10 | 0 | 0 |
-| Android Play build | 11 | 0 | 1 |
-| Python map/publisher tools | 12 | 0 | 0 |
+| Core Java | 11 | 0 | 0 |
+| Android debug | 30 | 0 | 0 |
+| Android standalone release | 30 | 0 | 0 |
+| Android Play | 31 | 0 | 1 |
+| Python publisher/map tools | 23 | 0 | 0 |
 
-Checks include strict signed manifests, malformed/duplicate JSON, URL/redirect restrictions, hash/size limits, rollback refusal, preservation of known-good maps, data-only releases, APK identity/current-signer rejection, location lifecycle, phone/car template construction, visible-map rendering and removal of Play's external-install permission.
+The intentional Play skip is an external-APK-staging scenario that does not apply to that build. The opt-in real-data test ran locally against the actual statewide database in all three Android variants. CI exercises labelled synthetic fixtures without downloading the statewide dataset.
 
-A regression test also proves that a valid map remains committed if APK staging fails. The next attempt retries only the APK, and the UI reports the partial success honestly.
+Native SQLite and Android rendering tests loaded genuine data for Adelaide, Mount Gambier, Port Augusta, Coober Pedy, Renmark and Kingscote, plus the densest metropolitan window. These tests simulated location fixes and checked GPS-follow across distant windows. They are not real GPS reception or car-host tests.
 
-Lint passed for debug, release and Play variants. Both standalone APK and Play bundle builds completed. [GitHub CI passed for the release source](https://github.com/wallajl/JWMaps/actions/runs/40873372883).
+Regression coverage includes first-fix following, street-scale default zoom, pan-to-pause, explicit resume, preservation across pack reloads, stale asynchronous callbacks, independent phone/car cameras, empty rural windows, malformed metadata, unsupported schemas, decompression limits, signed regional activation, rollback refusal, same-version corruption repair and mobile-data consent.
 
-## Actual Android emulator exercise
+Debug, release and Play lint passed. Signed standalone APK and Play bundle builds passed. The standalone APK uses the same signing identity as 0.1.1. The Play APK omits external-package-install permission.
 
-The signed APK was installed and launched in an API 35 Android emulator using Android Emulator 36.6.11. The following actions were exercised through the actual app and Android UI:
+## Actual Android phone emulator
 
-1. Opened the bundled Adelaide preview without location permission.
-2. Granted location through Android's permission sheet. Simulated an Adelaide position and then an out-of-coverage position, verifying the different map/nearby-place messages.
-3. From QA app 0.1.0, checked the real public GitHub release. The app verified and downloaded map revision 2 and staged APK 0.1.1.
-4. Granted per-source installation permission and approved the update in Android's system package installer.
-5. Opened the updated app. Its Updates screen showed **JWMaps 0.1.1**, **Adelaide city centre v2**, and **App and map pack are current.**
+The signed 0.2.0 APK was installed over 0.1.1 in an API 35 Android emulator. For the pre-release offline exercise, the verified real database was copied into the isolated emulator through root ADB. Wi-Fi and mobile data were disabled. Simulated GPS fixes then moved between Mount Gambier, Port Augusta and Coober Pedy. The app loaded the correct nearby places and map windows without a network connection or pressing Follow me between towns.
 
-The Android installer, not `adb install`, performed the 0.1.0-to-0.1.1 upgrade. ADB was used to install the initial QA baseline and to drive this isolated emulator test.
+![JWMaps in Coober Pedy with simulated GPS and offline statewide data](screenshots/phone-emulator.png)
 
-![JWMaps running in an Android emulator with a simulated Adelaide position](screenshots/phone-emulator.png)
+This image is from an Android phone emulator, not a Samsung or Ford display. The pre-release database copy is not evidence of a public network download. The earlier 0.1.0-to-0.1.1 test exercised Android's system APK installer separately.
 
-The screenshot is from an Android emulator with simulated GPS. It is not a Samsung or Ford screen capture.
+## Update and security boundaries
 
-## Release integrity and dependency checks
+Regional files are streamed to disk, checked against signed size/hash metadata, validated read-only, then atomically activated. Tests prove that corrupt or downgraded replacements preserve known-good data. Same-version local corruption can be repaired from the signed bytes. Regional state is separate from the CBD setup fallback and APK revisions.
 
-- Android `apksigner` verification passed. The released APK's signing identity matches the QA baseline, and package/version metadata was independently inspected.
-- The actual APK targets API 36. The standalone APK requests external-package-install permission; the Play APK does not.
-- The published manifest was verified with the app core's pinned public key, independently of the Python signer. The expanded map parsed as 3,318 genuine OSM-derived features.
-- All six published release assets were downloaded anonymously and matched the local release bytes exactly. The release includes `SHA256SUMS`.
-- The resolved release runtime graph was checked against OSV: 48 modules and zero known-advisory matches at the time checked. An earlier Guava advisory was addressed by using 33.7.2-android. This lookup does not prove dependencies are vulnerability-free.
+No Android runtime dependency was added for statewide storage. The pinned build-only osmium, Shapely, NumPy and requests versions were queried against OSV with no advisory matches at the time checked. This is not a guarantee that dependencies are vulnerability-free.
 
 ## Not yet verified or implemented
 
-- Samsung hardware and real GPS reception have not been tested. Emulator positions were simulated.
-- No Ford/SYNC or Desktop Head Unit test was performed. Car App Library sessions, templates, host validation and map rendering were tested separately. Trusted Play distribution and a parked vehicle test remain necessary.
-- Route calculation, turn-by-turn directions, Waze data and worldwide coverage are not part of this preview.
+- Samsung hardware and real GPS reception have not been tested.
+- No Ford/SYNC or Desktop Head Unit test was performed. Car App Library sessions, templates, host validation, shared rendering and location/window behavior were tested separately. Trusted Play distribution and a parked vehicle test remain necessary.
+- The map remains north-up. Bearing changes the location marker, not the map's orientation.
+- Route calculation, turn-by-turn instructions, Waze data and worldwide coverage are not implemented.
+- Statewide means the supported OSM geometry in this extract. Unsupported or malformed source features are counted as omissions. Decorative terrain is not measured land cover or elevation.

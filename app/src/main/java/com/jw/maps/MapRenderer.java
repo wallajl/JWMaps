@@ -12,7 +12,7 @@ final class MapRenderer {
     private final List<Shape> shapes=new ArrayList<>();
     private final Paint paint=new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Path path=new Path();
-    private double cx,cy,scale=0.13;
+    private double cx,cy,scale=0.6;
     private Location location;
     private boolean following,fitRequested;
     private final Path wall=new Path();
@@ -49,7 +49,7 @@ final class MapRenderer {
     }
     private static int layer(String k) {switch(k) {case "park":return 0;case "water":return 1;case "building":return 2;case "road":return 3;default:return 4;}}
     synchronized MapPack pack() {return pack;}
-    synchronized void preview() {if(pack!=null) center((pack.bbox[0]+pack.bbox[2])/2,(pack.bbox[1]+pack.bbox[3])/2);following=false;scale=.13;fitRequested=true;}
+    synchronized void preview() {if(pack!=null) center((pack.bbox[0]+pack.bbox[2])/2,(pack.bbox[1]+pack.bbox[3])/2);following=false;scale=.6;fitRequested=true;}
     private void moveCenter(double lon,double lat) {double[] p=MapPack.project(lon,lat);cx=p[0];cy=p[1];}
     synchronized void center(double lon,double lat) {moveCenter(lon,lat);following=false;fitRequested=false;}
     synchronized void recenter() {if(location!=null&&pack!=null&&pack.covers(location.getLongitude(),location.getLatitude())) {moveCenter(location.getLongitude(),location.getLatitude());following=true;fitRequested=false;} else {preview();following=true;}}
@@ -114,7 +114,7 @@ final class MapRenderer {
             paint.setStyle(Paint.Style.FILL);paint.setColor(0x3022d3ee);c.drawCircle(px,py,18*density,paint);paint.setColor(CYAN);c.drawCircle(px,py,7*density,paint);
             if(location.hasBearing()) {c.save();c.rotate(location.getBearing(),px,py);paint.setStrokeWidth(3*density);c.drawLine(px,py,px,py-22*density,paint);c.restore();}
         }
-        double[] viewCenter=center();if(!pack.covers(viewCenter[0],viewCenter[1]))text(c,"Outside map pack · use Centre",viewport.left+16*density,viewport.top+28*density,14*density,dark?TEXT:Color.BLACK);
+        double[] viewCenter=center();if(!pack.covers(viewCenter[0],viewCenter[1]))text(c,"Outside loaded window · tap Follow me",viewport.left+16*density,viewport.top+28*density,14*density,dark?TEXT:Color.BLACK);
         paint.setStyle(Paint.Style.FILL);paint.setColor(dark?0xee111827:0xeef8fafc);
         c.drawRoundRect(viewport.left+8*density,viewport.bottom-31*density,viewport.right-8*density,viewport.bottom-5*density,8*density,8*density,paint);
         text(c,"© OpenStreetMap contributors · ODbL",viewport.left+16*density,viewport.bottom-14*density,11*density,dark?TEXT:Color.BLACK);

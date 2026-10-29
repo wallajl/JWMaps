@@ -1,0 +1,109 @@
+{
+  "license": "ODbL-1.0",
+  "attribution": "© OpenStreetMap contributors",
+  "source": {
+    "url": "https://download.geofabrik.de/australia-oceania/australia/south-australia-261028.osm.pbf",
+    "timestamp": "2026-10-28T21:21:02Z",
+    "sizeBytes": 68128053,
+    "sha256": "80742f7a78783b78ed47547a84a3a7b96714bf285d1cc652abf2f2db59279905",
+    "md5": "b684793065cde31410547452eb92c5aa",
+    "publisherMd5Verified": true,
+    "bbox": [
+      128.999343,
+      -39.831564,
+      141.007272,
+      -25.993034
+    ]
+  },
+  "output": {
+    "sizeBytes": 285925376,
+    "sha256": "8c9cd2b159730809ac564a39746a215080f81363ffdd5d77d3ce4f92fd245235"
+  },
+  "featureCount": 757011,
+  "kinds": {
+    "poi": 17300,
+    "road": 278748,
+    "park": 28668,
+    "water": 24188,
+    "building": 408107
+  },
+  "tileCount": 114325,
+  "omissions": {
+    "unsupported_node_tags": 10185682,
+    "unsupported_way_tags": 237832,
+    "ring_limit": 3,
+    "path_limit": 2,
+    "unsupported_relation_tags": 16576,
+    "unassembled_closed_area_ways": 0,
+    "unassembled_area_relations": 20
+  },
+  "audit": {
+    "status": "pass",
+    "integrityCheck": "ok",
+    "allTilesAudited": true,
+    "uniqueSourceFeatures": 757011,
+    "uniqueStoredGeometryIds": 846066,
+    "counts": {
+      "tiles": 114325,
+      "storedFeatureRows": 960880,
+      "storedPoints": 22258313
+    },
+    "maxima": {
+      "rings": 61,
+      "pathPoints": 14706,
+      "compressedTileBytes": 601456,
+      "uncompressedTileBytes": 4487854,
+      "tileFeatures": 9361,
+      "tilePoints": 72099,
+      "nineTileFeatures": 57920,
+      "nineTilePoints": 357911,
+      "nineTileCompressedBytes": 3749868,
+      "nineTileUncompressedBytes": 27278462
+    }
+  },
+  "runtimeSamples": [
+    {
+      "name": "Adelaide",
+      "features": 49438,
+      "loadMillis": 2477,
+      "drawMillis": 124
+    },
+    {
+      "name": "Mount Gambier",
+      "features": 5150,
+      "loadMillis": 437,
+      "drawMillis": 26
+    },
+    {
+      "name": "Port Augusta",
+      "features": 1821,
+      "loadMillis": 86,
+      "drawMillis": 23
+    },
+    {
+      "name": "Coober Pedy",
+      "features": 1344,
+      "loadMillis": 86,
+      "drawMillis": 31
+    },
+    {
+      "name": "Renmark",
+      "features": 3300,
+      "loadMillis": 150,
+      "drawMillis": 31
+    },
+    {
+      "name": "Kingscote",
+      "features": 1936,
+      "loadMillis": 166,
+      "drawMillis": 46
+    },
+    {
+      "name": "Dense metro window",
+      "features": 56815,
+      "loadMillis": 2244,
+      "drawMillis": 39
+    }
+  ],
+  "runtimeBoundary": "Native Android tests with genuine OSM data and simulated GPS, not real vehicle verification."
+}

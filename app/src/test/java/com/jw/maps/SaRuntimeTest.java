@@ -47,6 +47,15 @@ public class SaRuntimeTest {
         assertNotSame(before,renderer.pack());assertEquals(2,changes[0]);assertFalse(renderer.isFollowing());
         assertArrayEquals(new double[]{137.51,-32.99},renderer.center(),1e-7);
     }
+    @Test public void statewideDownloadExplainsMobileDataBeforeStarting() throws Exception {
+        assertTrue(app.regionFile().delete());app.regionActivated();drain();
+        try(var controller=Robolectric.buildActivity(MainActivity.class).setup()) {
+            drain();var activity=controller.get();findButton(activity.getWindow().getDecorView(),"Updates").performClick();
+            findButton(activity.getWindow().getDecorView(),"Download South Australia").performClick();
+            var dialog=org.robolectric.shadows.ShadowAlertDialog.getLatestAlertDialog();assertNotNull(dialog);
+            String text=allText(dialog.getWindow().getDecorView());assertTrue(text,text.contains("mobile data"));assertTrue(text,text.contains("Wi-Fi"));
+        }
+    }
     @Test public void updatesOfferDownloadWhenAbsentAndNameTheLocalWindowWhenInstalled() throws Exception {
         try(var controller=Robolectric.buildActivity(MainActivity.class).setup()) {
             drain();MainActivity activity=controller.get();

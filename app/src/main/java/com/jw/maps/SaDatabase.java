@@ -12,7 +12,7 @@ import java.util.*;
 /** Read-only South Australia tile store. Never materializes statewide geometry. */
 final class SaDatabase {
     static final double GRID=.025;
-    static final int BLOB_LIMIT=4*1024*1024,WINDOW_BYTES=25*1024*1024;
+    static final int BLOB_LIMIT=1024*1024,WINDOW_BYTES=32*1024*1024;
     private static final Set<String> KINDS=new HashSet<>(Arrays.asList("road","building","water","park","poi"));
     private SaDatabase() {}
     private static SQLiteDatabase open(File file) throws IOException {
@@ -35,7 +35,7 @@ final class SaDatabase {
             if(m.version!=expectedVersion)throw new IOException("South Australia database version does not match signed version");
             try(Cursor c=db.rawQuery("SELECT count(*),coalesce(sum(feature_count),0),coalesce(max(feature_count),0),"+
                     "coalesce(sum(CASE WHEN typeof(x)!='integer' OR typeof(y)!='integer' OR typeof(payload)!='blob' OR typeof(feature_count)!='integer' "+
-                    "OR feature_count<0 OR feature_count>60000 OR length(payload)<1 OR length(payload)>4194304 "+
+                    "OR feature_count<0 OR feature_count>60000 OR length(payload)<1 OR length(payload)>1048576 "+
                     "OR x<? OR x>? OR y<? OR y>? THEN 1 ELSE 0 END),0) FROM tiles",
                     // Geofabrik retains complete ways beyond the extract header. Extra boundary cells do not extend advertised coverage.
                     new String[]{Integer.toString(tile(-180)),Integer.toString(tile(180)),Integer.toString(tile(-85)),Integer.toString(tile(85))})) {
@@ -62,7 +62,7 @@ final class SaDatabase {
                     }
                     ByteArrayOutputStream out=new ByteArrayOutputStream();
                     try(InputStream zip=new java.util.zip.GZIPInputStream(new ByteArrayInputStream(compressed))) {
-                        byte[] buffer=new byte[8192];int n;while((n=zip.read(buffer))!=-1){bytes+=n;if(bytes>WINDOW_BYTES)throw new IOException("Regional density exceeds 25 MiB decompression limit");out.write(buffer,0,n);}
+                        byte[] buffer=new byte[8192];int n;while((n=zip.read(buffer))!=-1){bytes+=n;if(bytes>WINDOW_BYTES)throw new IOException("Regional density exceeds 32 MiB decompression limit");out.write(buffer,0,n);}
                     }
                     com.jw.maps.core.MapPack p=com.jw.maps.core.MapPack.parse(out.toByteArray());
                     double[] expected={c.getInt(0)*GRID,c.getInt(1)*GRID,(c.getInt(0)+1)*GRID,(c.getInt(1)+1)*GRID};

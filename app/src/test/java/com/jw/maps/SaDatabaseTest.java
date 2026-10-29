@@ -69,9 +69,9 @@ public class SaDatabaseTest {
         assertThrows(IOException.class,()->SaDatabase.validate(huge,3));assertThrows(IOException.class,()->SaDatabase.window(huge,137.51,-32.99));
     }
     @Test public void rejectsDecompressionBombBeforeParsingAndLeavesDamagedFileIntact() throws Exception {
-        File file=fixture();ByteArrayOutputStream out=new ByteArrayOutputStream();try(GZIPOutputStream gzip=new GZIPOutputStream(out)) {byte[] block=new byte[1024*1024];for(int i=0;i<26;i++)gzip.write(block);}
+        File file=fixture();ByteArrayOutputStream out=new ByteArrayOutputStream();try(GZIPOutputStream gzip=new GZIPOutputStream(out)) {byte[] block=new byte[1024*1024];for(int i=0;i<33;i++)gzip.write(block);}
         try(SQLiteDatabase db=SQLiteDatabase.openDatabase(file.getAbsolutePath(),null,SQLiteDatabase.NO_LOCALIZED_COLLATORS)){ContentValues row=new ContentValues();row.put("payload",out.toByteArray());db.update("tiles",row,"x=?",new String[]{"5500"});}
-        IOException error=assertThrows(IOException.class,()->SaDatabase.window(file,137.51,-32.99));assertTrue(error.getMessage(),error.getMessage().contains("25 MiB"));
+        IOException error=assertThrows(IOException.class,()->SaDatabase.window(file,137.51,-32.99));assertTrue(error.getMessage(),error.getMessage().contains("32 MiB"));
         File damaged=File.createTempFile("synthetic-damaged-", ".sqlite",file.getParentFile());byte[] invalid="this is not sqlite".getBytes(StandardCharsets.UTF_8);java.nio.file.Files.write(damaged.toPath(),invalid);
         assertThrows(IOException.class,()->SaDatabase.validate(damaged,3));assertArrayEquals(invalid,java.nio.file.Files.readAllBytes(damaged.toPath()));
     }

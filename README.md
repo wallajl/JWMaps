@@ -2,7 +2,7 @@
 
 [Download the latest release](https://github.com/wallajl/JWMaps/releases/latest) · [Verification and limits](docs/TESTING.md)
 
-![JWMaps phone preview in an Android emulator with simulated Adelaide GPS](docs/screenshots/phone-emulator.png)
+![JWMaps offline Coober Pedy map in an Android emulator with simulated GPS](docs/screenshots/phone-emulator.png)
 
 *Android emulator preview, not a Samsung or Ford screen capture.*
 
@@ -14,15 +14,16 @@ A Minecraft-inspired view of real-world maps for Android, with an Android Auto P
 
 1. Open [the latest release](https://github.com/wallajl/JWMaps/releases/latest).
 2. Download `JWMaps-<version>.apk` and install it on Android 9 or later. Android may ask you to allow installation from your browser or file manager.
-3. Open JWMaps. The Adelaide city-centre preview works without location permission. Choose **My location** to enable position tracking.
-4. Use **Updates** to check manually. Later compatible APKs are downloaded and verified, but Android still asks you to approve installation.
+3. Open **Updates → Download South Australia** while connected. The statewide map is downloaded separately from the small APK and remains available offline. A bundled Adelaide preview is available during setup.
+4. Choose **My location** to allow GPS. The map follows your position automatically. Panning or choosing a place pauses follow; **Follow me** resumes it on either screen.
+5. Use **Updates** to check manually. Later compatible APKs are downloaded and verified, but Android still asks you to approve installation.
 
-The dashed map boundary marks available coverage. If you are outside it, the app says so instead of pretending the Adelaide preview is your location. The first map is deliberately small.
+South Australia uses a full-state OSM extract stored on disk. Only the local area is loaded into memory, and the loaded area changes as you move or pan. The dashed boundary marks that local window, not the whole state. OSM completeness varies, especially in remote areas. Background statewide downloads wait for an unmetered connection.
 
 ## What works
 
 - Real OpenStreetMap roads, building footprints and named places, with a block-inspired renderer, decorative terrain texture and day/night car maps.
-- Pan, zoom, recenter and local location/heading display. No saved trip history or location uploads to GitHub.
+- GPS-following north-up maps on phone and the Android Auto map surface. The position marker shows bearing when available. Panning pauses follow, and regional reloads preserve the camera and zoom. No saved trip history or location uploads to GitHub.
 - Signed release metadata, size/hash checks, APK package/version/signing checks and rollback protection.
 - Independently versioned map packs with atomic activation and a known-good fallback.
 - A native Android Auto POI service with host-controlled map/list templates and release host validation.
@@ -60,7 +61,7 @@ Build a Play upload bundle with `./gradlew :app:bundlePlay`. Publishing or accep
 Publisher and map-tool tests:
 
 ```sh
-python -m pip install -r tools/requirements-release.txt
+python -m pip install -r tools/requirements-release.txt -r tools/requirements-map.txt
 python -m unittest discover -s tools -p 'test_*.py' -v
 ```
 
@@ -68,6 +69,7 @@ python -m unittest discover -s tools -p 'test_*.py' -v
 
 - [First-release requirements and update protocol](docs/SPEC.md)
 - [Map provenance, limitations and data licence](map-data/README.md)
+- [Full South Australia source and reproduction](map-data/SOUTH-AUSTRALIA.md)
 - [Releases](https://github.com/wallajl/JWMaps/releases)
 
 Software is MIT licensed. OpenStreetMap-derived data is separately licensed under ODbL 1.0. JWMaps is independent of Mojang, Microsoft, Google, Waze and Ford.

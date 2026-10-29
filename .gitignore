@@ -5,6 +5,9 @@ local.properties
 *.keystore
 *.p12
 *.pfx
+*.sqlite
+*.osm.pbf
+*.geojson.gz
 *.key
 __pycache__/
 *.py[cod]
